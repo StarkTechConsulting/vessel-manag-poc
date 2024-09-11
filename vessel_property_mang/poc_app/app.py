@@ -10,10 +10,10 @@ from langchain_openai import OpenAIEmbeddings
 from etl import process_documents
 from langchain_pinecone import PineconeVectorStore
 
-client = MongoClient(os.getenv("MONGODB_CONNECTION_STRING"))  
+client = MongoClient(st.secrets("MONGODB_CONNECTION_STRING"))  
 db = client["streamlit-documents"]  
 fs = gridfs.GridFS(db)  # GridFS is used to store large files in MongoDB
-vector_store = PineconeVectorStore.from_existing_index(index_name=os.getenv("PINECONE_INDEX_NAME"), embedding=OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY"),model="text-embedding-3-large"))
+vector_store = PineconeVectorStore.from_existing_index(index_name=st.secrets("PINECONE_INDEX_NAME"), embedding=OpenAIEmbeddings(api_key=st.secrets("OPENAI_API_KEY"),model="text-embedding-3-large"))
 
 
 def upload_to_mongo(file):

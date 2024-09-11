@@ -9,6 +9,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
+import streamlit as st
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
@@ -22,7 +23,7 @@ def run_query(vectorstore,query):
     max_tokens=None,
     timeout=None,
     max_retries=2,
-    api_key=os.getenv("OPENAI_API_KEY")
+    api_key=st.secrets("OPENAI_API_KEY")
 )
     
     system_prompt = (

@@ -10,11 +10,12 @@ import logging
 from pinecone import Pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import OpenAIEmbeddings
+import streamlit as st
 
-def get_pinecone_vector_store(embeddings_model,namespace="default",index_name: str = os.getenv("PINECONE_INDEX_NAME")) -> PineconeVectorStore:
+def get_pinecone_vector_store(embeddings_model,namespace="default",index_name: str = st.secrets("PINECONE_INDEX_NAME")) -> PineconeVectorStore:
     try:
         # Initialize Pinecone client
-        pinecone_api_key = os.getenv("PINECONE_API_KEY")
+        pinecone_api_key = st.secrets("PINECONE_API_KEY")
         if not pinecone_api_key:
             raise ValueError("Pinecone API key is not set. Please set it in the environment variables.")
         
@@ -113,7 +114,7 @@ def load_to_vectordb(
 def load_document():
 
     loader = MongodbLoader(
-        connection_string=os.getenv("MONGODB_CONNECTION_STRING"),
+        connection_string=st.secrets("MONGODB_CONNECTION_STRING"),
         db_name="streamlit-documents",
         collection_name="user-documents",
     )
