@@ -11,11 +11,14 @@ from pinecone import Pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import OpenAIEmbeddings
 import streamlit as st
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import Docx2txtLoader
+from langchain_community.document_loaders import TextLoader
 
-def get_pinecone_vector_store(embeddings_model,namespace="default",index_name: str = st.secrets("PINECONE_INDEX_NAME")) -> PineconeVectorStore:
+def get_pinecone_vector_store(embeddings_model,namespace="default",index_name: str = st.secrets["PINECONE_INDEX_NAME"]) -> PineconeVectorStore:
     try:
         # Initialize Pinecone client
-        pinecone_api_key = st.secrets("PINECONE_API_KEY")
+        pinecone_api_key = st.secrets["PINECONE_API_KEY"]
         if not pinecone_api_key:
             raise ValueError("Pinecone API key is not set. Please set it in the environment variables.")
         
@@ -110,20 +113,35 @@ def load_to_vectordb(
         logging.error(f"Failed to load documents into vector database: {str(e)}")
         return None, False
     
+def check_file_type(filename):
+    # Convert the file name to lowercase to handle case-insensitive extensions
+    if filename.endswith('.pdf'):
+        return "PDF"
+    elif filename.endswith('.txt'):
+        return "TXT"
+    elif filename.endswith('.docx'):
+        return "DOCX"
+    else:
+        return "Unsupported file type"
 
-def load_document():
+def load_document(path):
 
-    loader = MongodbLoader(
-        connection_string=st.secrets("MONGODB_CONNECTION_STRING"),
-        db_name="streamlit-documents",
-        collection_name="user-documents",
-    )
+    file_type = check_file_type(path) 
 
+    if file_type == "PDF":
+        loader = PyPDFLoader(path)
+    elif file_type == "TXT":
+        loader = TextLoader(path)
+    elif file_type == "DOCX":
+        loader = Docx2txtLoader(path)
+    else:
+        print("Unsupported file type")
+        return 
     docs = loader.load()
     return docs
 
 
-def process_documents(embeddings_model, index_name, namespace="default"):
+def process_document(path,embeddings_model, index_name, namespace="default"):
     """
     Orchestrates the process of loading documents from MongoDB, chunking them, and then loading them into a Pinecone vector database.
 
@@ -135,11 +153,11 @@ def process_documents(embeddings_model, index_name, namespace="default"):
     try:
         # Step 1: Load documents from MongoDB
         logging.info("Loading documents from MongoDB...")
-        documents = load_document()
+        documents = load_document(path)
 
         if not documents:
-            logging.error("No documents found in MongoDB collection.")
-            return
+            logging.error("No documents found.")
+            return None
 
         # Step 2: Chunk the documents
         logging.info("Chunking the documents...")
@@ -147,7 +165,7 @@ def process_documents(embeddings_model, index_name, namespace="default"):
 
         if not document_chunks:
             logging.error("Failed to chunk documents.")
-            return
+            return None
 
         # Step 3: Load document chunks into Pinecone vector database
         logging.info("Loading document chunks into the vector database...")
@@ -160,6 +178,7 @@ def process_documents(embeddings_model, index_name, namespace="default"):
 
         if success:
             logging.info("Documents successfully processed and loaded into Pinecone.")
+            print("yes")
             return vector_store
         else:
             logging.error("Failed to load document chunks into the vector database.")
