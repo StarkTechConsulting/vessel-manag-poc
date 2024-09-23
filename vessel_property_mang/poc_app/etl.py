@@ -179,7 +179,7 @@ def process_document(path,embeddings_model, index_name, namespace="default"):
         if success:
             logging.info("Documents successfully processed and loaded into Pinecone.")
             print("yes")
-            return vector_store
+            return vector_store,documents
         else:
             logging.error("Failed to load document chunks into the vector database.")
             return None
