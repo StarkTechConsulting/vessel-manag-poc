@@ -42,7 +42,7 @@ def get_pinecone_vector_store(embeddings_model,namespace="default",index_name: s
         return None
     
 
-def chunk_docs(documents, embed_model) :
+async def chunk_docs(documents, embed_model) :
     """
     Chunks the provided documents into smaller text segments using a semantic chunking model.
 
@@ -61,14 +61,14 @@ def chunk_docs(documents, embed_model) :
         logging.info("Initializing SemanticChunker...")
         text_splitter = SemanticChunker(embeddings=embed_model)
         logging.info("Performing document chunking...")
-        chunks = text_splitter.transform_documents(documents=documents)
+        chunks = await text_splitter.atransform_documents(documents=documents)
         logging.info(f"Created {len(chunks)} chunks from the documents.")
         return chunks
     except Exception as e:
         logging.error(f"Failed to chunk documents: {str(e)}")
         raise
 
-def load_to_vectordb(
+async def load_to_vectordb(
     docs,
     index_name: str,
     embeddings,
@@ -104,7 +104,7 @@ def load_to_vectordb(
         logging.info(f"Loading {len(docs)} documents into Pinecone vector store '{index_name}' under namespace '{namespace}'...")
         
         # TODO: add cache 
-        vector_store.add_documents(documents=docs)
+        await vector_store.aadd_documents(documents=docs)
 
         logging.info("Documents successfully loaded into the vector database.")
         return vector_store, True
@@ -124,7 +124,7 @@ def check_file_type(filename):
     else:
         return "Unsupported file type"
 
-def load_document(path):
+async def load_document(path):
 
     file_type = check_file_type(path) 
 
@@ -137,11 +137,11 @@ def load_document(path):
     else:
         print("Unsupported file type")
         return 
-    docs = loader.load()
+    docs = await loader.aload()
     return docs
 
 
-def process_document(path,embeddings_model, index_name, namespace="default"):
+async def process_document(path,embeddings_model, index_name, namespace="default"):
     """
     Orchestrates the process of loading documents from MongoDB, chunking them, and then loading them into a Pinecone vector database.
 
@@ -153,7 +153,7 @@ def process_document(path,embeddings_model, index_name, namespace="default"):
     try:
         # Step 1: Load documents from MongoDB
         logging.info("Loading documents from MongoDB...")
-        documents = load_document(path)
+        documents = await load_document(path)
 
         if not documents:
             logging.error("No documents found.")
@@ -161,7 +161,7 @@ def process_document(path,embeddings_model, index_name, namespace="default"):
 
         # Step 2: Chunk the documents
         logging.info("Chunking the documents...")
-        document_chunks = chunk_docs(documents, embeddings_model)
+        document_chunks = await chunk_docs(documents, embeddings_model)
 
         if not document_chunks:
             logging.error("Failed to chunk documents.")
@@ -169,7 +169,7 @@ def process_document(path,embeddings_model, index_name, namespace="default"):
 
         # Step 3: Load document chunks into Pinecone vector database
         logging.info("Loading document chunks into the vector database...")
-        vector_store, success = load_to_vectordb(
+        vector_store, success = await load_to_vectordb(
             docs=document_chunks,
             index_name=index_name,
             embeddings=embeddings_model,

@@ -27,8 +27,35 @@ from langchain_community.agent_toolkits import GmailToolkit
 from langchain import hub
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain_openai import OpenAIEmbeddings
-history = StreamlitChatMessageHistory(key="chat_messages")
+from langchain.tools import tool
+from gcalendar_tools import get_events_for_date_str, get_events_for_today_str
+from agent_prompts import prompt_v1
 
+@tool
+def get_events_for_date_tool(date_str: str, timezone: str = 'UTC') -> str:
+    """Get events for a specific date in the specified timezone.
+
+    Args:
+        date_str: The date in 'YYYY-MM-DD' format.
+        timezone: Timezone string, e.g., 'America/Los_Angeles', 'UTC', 'UTC+1'.
+
+    Returns:
+        A string containing the list of events.
+    """
+    return get_events_for_date_str(date_str, timezone)
+
+
+@tool
+def get_events_for_today_tool(timezone: str = 'UTC') -> str:
+    """Get events for today in the specified timezone.
+
+    Args:
+        timezone: Timezone string, e.g., 'America/Los_Angeles'.
+
+    Returns:
+        A string containing the list of events.
+    """
+    return get_events_for_today_str(timezone)
 
 
 
@@ -44,7 +71,7 @@ def run_query( retriever,query,chat_history):
     max_tokens=None,
     timeout=None,
     max_retries=2,
-    api_key=st.secrets["OPENAI_API_KEY"]
+    api_key=os.getenv("OPENAI_API_KEY")
     )
     
 
@@ -84,13 +111,11 @@ def run_query( retriever,query,chat_history):
     )
     
     answer = rag_chain.invoke({"input": query, "chat_history": chat_history})
-    history.add_user_message(query)
-    history.add_ai_message(answer)
 
     return answer
 
 
-def run_agent(query,chat_history,memory):
+def run_agent(query,chat_history,memory=None):
 
     openai_api_key=os.getenv("OPENAI_API_KEY")
     toolkit = GmailToolkit()
@@ -101,29 +126,30 @@ def run_agent(query,chat_history,memory):
     docs_retriever = vector_store.as_retriever()
 
     inst_vector_store = get_pinecone_vector_store(OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY"),model="text-embedding-3-large"),index_name="instructions-index")
-    inst_retriever = vector_store.as_retriever()
+    inst_retriever = inst_vector_store.as_retriever()
 
     llm = ChatOpenAI(model="gpt-4o", temperature=0, openai_api_key=openai_api_key)
 
     docs_retrieval_tool = create_retriever_tool(
         docs_retriever,
         "answer_question",
-        "Invoked always when a user asks a question."
+        "Use this tool to answer the user's questions about information in the uploaded documents."
     )
 
     instructions_retrieval_tool = create_retriever_tool(
         inst_retriever,
         "instructions_retriever",
-        "Used to retrieve relevant instructions on how to complete a task when the user asks you to perform a certain task like letter writting, email drafting etc."
+        "Used to retrieve relevant instructions on how to complete a task when the user asks you to perform a certain task like letter writting, email drafting etc. Note: this tool is invoked first to retrieve the instructions for completing the task, and then the tool for task completion is invoked "
     )
-    tools = [docs_retrieval_tool,instructions_retrieval_tool] + google_tools
+    gcalendar_tools =  [get_events_for_date_tool, get_events_for_today_tool]
+    tools = [docs_retrieval_tool,instructions_retrieval_tool] + google_tools + gcalendar_tools
 
 
 
-    # OpenAI functions agent
-    instructions = "You are an assistant."
+
+
     base_prompt = hub.pull("langchain-ai/openai-functions-template")
-    prompt = base_prompt.partial(instructions=instructions)
+    prompt = base_prompt.partial(instructions=prompt_v1)
     llm = ChatOpenAI(model="gpt-4o", temperature=0, openai_api_key=openai_api_key)
     openai_agent = create_openai_functions_agent(llm, tools, prompt)
 
@@ -131,8 +157,8 @@ def run_agent(query,chat_history,memory):
     agent_executor = AgentExecutor(
         agent=openai_agent,
         tools=tools,
-        verbose=True,
-        memory=memory
+        memory=None
+
     )
     output = agent_executor.invoke(  {
         "input": query,

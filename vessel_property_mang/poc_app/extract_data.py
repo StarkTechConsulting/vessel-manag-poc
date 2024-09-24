@@ -29,7 +29,7 @@ def extract_store_instructions(text):
                 instructions_str = ' '.join(task_instruction.instructions)
                 
                 # Format the string as desired
-                formatted_string = f"task: {task_str} + instructions: {instructions_str}"
+                formatted_string = f"task: {task_str} " + f" task instructions: {instructions_str}"
                 
                 # Add to the list
                 formatted_list.append(formatted_string)
@@ -52,7 +52,16 @@ def extract_store_instructions(text):
    
 
 
-def extract_building_names(text,roberta_nlp):
+def extract_building_names(docs,roberta_nlp):
+    
+    output = 'Uknown Property'
+    texts = [doc.page_content for doc in docs]
+    text = " ".join(texts)
     doc = roberta_nlp(text)
     buildings = [ent.text for ent in doc.ents if ent.label_ in ['FAC',"building","property"]]
-    return list(set(buildings))
+    
+
+    if buildings:
+        output= list(set(buildings))[0]
+
+    return output
