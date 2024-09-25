@@ -1,0 +1,5 @@
+.env
+.streamlit/
+assets/
+notebooks/
+google-creds/
