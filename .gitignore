@@ -1,6 +1,5 @@
-.env
-/.streamlit
-/assets
-
-/notebooks
-/google-creds
+/vessel_property_mang/.env
+/vessel_property_mang/poc_app/.streamlit
+/vessel_property_mang/assets
+/vessel_property_mang/notebooks
+/vessel_property_mang/google-creds
