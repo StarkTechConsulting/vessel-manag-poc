@@ -1,2 +1,6 @@
 .env
-/.streamlit/secrets.toml
+/.streamlit
+/assets
+
+/notebooks
+/google-creds
